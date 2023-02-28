@@ -1,6 +1,8 @@
 import React from "react";
 import { Carousel, Flex, Grid, WingBlank } from 'antd-mobile';
 import axios from "axios";
+import { getCurrentCity } from "../../utils";
+
 // 导入导航栏菜单图片
 import Nav1 from '../../assets/images/nav-1.png'
 import Nav2 from '../../assets/images/nav-2.png'
@@ -59,21 +61,15 @@ export default class Index extends React.Component {
   }
 
 
-  componentDidMount() {
+  async componentDidMount() {
     this.getSwiper()
     this.getGroups()
     this.getNews()
 
-    // 获取当前位置
-    var myCity = new window.BMapGL.LocalCity();
-    myCity.get(async res => {
-
-      const result = await axios.get(`http://localhost:8080/area/info?name=${res.name}`)
-
-      this.setState({
-        curCityName: result.data.body.label
-      })
-    });
+    const curCity = await getCurrentCity()
+    this.setState({
+      curCityName: curCity.label
+    })
   }
 
   // 获取轮播图
