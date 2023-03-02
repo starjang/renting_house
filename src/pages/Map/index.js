@@ -2,9 +2,10 @@ import React from 'react'
 import NavHeader from '../../components/NavHeader';
 import axios from 'axios';
 import { Link } from 'react-router-dom';
-import { Item } from 'antd-mobile/lib/tab-bar';
+import { Toast } from 'antd-mobile'
 
-import './index.css'
+//import './index.css'
+import styles from './index.module.css'
 
 const bMap = window.BMapGL
 
@@ -53,19 +54,43 @@ export default class Map extends React.Component {
         this.renderOverlays(value)
       }
     }, label)
+
+    // 给地图绑定移动事件
+    map.addEventListener('movestart', () => {
+
+      if (this.state.isShowList) {
+        this.setState({
+          isShowList: false
+        })
+      }
+    })
   }
 
   // 渲染覆盖物入口
   async renderOverlays(id) {
-    const res = await axios.get(`http://localhost:8080/area/map?id=${id}`)
-    const data = res.data.body
 
-    const { nextZoom, type } = this.getTypeAndZoom()
+    try {
+      // 开启loading
+      Toast.loading('加载中...', 0, null, false)
 
-    data.forEach(item => {
-      // 创建覆盖物
-      this.createOverlays(item, nextZoom, type)
-    })
+      const res = await axios.get(`http://localhost:8080/area/map?id=${id}`)
+      const data = res.data.body
+
+      //关闭loading
+      Toast.hide()
+
+      const { nextZoom, type } = this.getTypeAndZoom()
+
+      data.forEach(item => {
+        // 创建覆盖物
+        this.createOverlays(item, nextZoom, type)
+      })
+    } catch (error) {
+      //关闭loading
+      Toast.hide()
+    }
+
+
   }
 
   // 计算要绘制的覆盖物类型和下一个缩放级别
@@ -126,11 +151,11 @@ export default class Map extends React.Component {
 
     // 设置房源覆盖物
     label.setContent(`
-           <div class="bubble">
-             <p class="name">${name}</p>
-             <p>${count}套</p>
-           </div>
-        `)
+      <div class="${styles.bubble}">
+        <p class="${styles.name}">${name}</p>
+        <p>${count}套</p>
+      </div>
+    `)
 
     // 设置样式
     label.setStyle(labelStyle)
@@ -165,20 +190,29 @@ export default class Map extends React.Component {
     label.id = id
 
     // 设置房源覆盖物
+    // 设置房源覆盖物内容
     label.setContent(`
-           <div class="rect">
-             <span class="housename">${name}</span>
-             <span class="housenum">${count}</span>
-             <i class="arrow"></i>
-           </div>
-        `)
-
+      <div class="${styles.rect}">
+        <span class="${styles.housename}">${name}</span>
+        <span class="${styles.housenum}">${count}套</span>
+        <i class="${styles.arrow}"></i>
+      </div>
+    `)
     // 设置样式
     label.setStyle(labelStyle)
 
     // 设置单击事件
-    label.addEventListener('click', () => {
+    label.addEventListener('click', e => {
+
       this.getHousesList(id)
+
+      // 获取当前点击项
+      console.log(e);
+      //const target = e.changedTouches[0]
+      //this.map.panBy(
+      //  window.innerWidth / 2 - target.clientX,
+      //  (window.innerHeight - 330) / 2 - target.clientY
+      //)
     })
 
     // 添加覆盖物到地图中
@@ -188,49 +222,69 @@ export default class Map extends React.Component {
 
   // 获取小区房源数据
   async getHousesList(id) {
-    const res = await axios.get(`http://localhost:8080/houses?cityId=${id}`)
+    let res = await axios.get('http://localhost:8080/houses?cityId=' + id)
     this.setState({
-      housesList: res.data.body
+      housesList: res.data.body.list,
+      isShowList: true
     })
+  }
+
+  // 渲染房源列表
+  renderHousesList() {
+    return this.state.housesList.map(item => (
+      <div className={styles.house} key={item.houseCode}>
+        <div className={styles.imgWrap}>
+          <img className={styles.img} src={`http://localhost:8080${item.houseImg}`} alt="" />
+        </div>
+        <div className={styles.content}>
+          <h3 className={styles.title}>{item.title}</h3>
+          <div className={styles.desc}>{item.desc}</div>
+          <div>
+            {/* ['近地铁', '随时看房'] */}
+            {item.tags.map((tag, index) => {
+              const tagClass = 'tag' + (index + 1)
+              return (
+                <span
+                  className={[styles.tag, styles[tagClass]].join(' ')}
+                  key={tag}
+                >
+                  {tag}
+                </span>
+              )
+            })}
+          </div>
+          <div className={styles.price}>
+            <span className={styles.priceNum}>{item.price}</span> 元/月
+          </div>
+        </div>
+      </div>
+    )
+    )
   }
 
   render() {
     return (
-      <div className="map">
-        {/* 导航栏 */}
+      <div className={styles.map}>
+        {/* 顶部导航栏组件 */}
         <NavHeader>地图找房</NavHeader>
-        {/* 地图容器 */}
-        <div id="container">
-        </div>
+        {/* 地图容器元素 */}
+        <div id="container" className={styles.container} />
 
-        {/* 房源列表 */}
-        <div className={["houseList", "show"].join(' ')}>
-          <div className="titleWrap">
-            <h1 className="listTitle">房屋列表</h1>
-            <Link className="titleMore" to="/home/list">更多房源</Link>
+        {/* 添加 styles.show 展示房屋列表 */}
+        <div
+          className={[
+            styles.houseList,
+            this.state.isShowList ? styles.show : ''
+          ].join(' ')}
+        >
+          <div className={styles.titleWrap}>
+            <h1 className={styles.listTitle}>房屋列表</h1>
+            <Link className={styles.titleMore} to="/home/list">
+              更多房源</Link>
           </div>
-
-          <div className="houseItems">
+          <div className={styles.houseItems}>
             {/* 房屋结构 */}
-            <div className="house">
-              <div className="imgWrap">
-                <img src="http://localhost:8080/img/swiper/3.png"></img>
-              </div>
-              <div className="content">
-                <h3 className="title">
-                  三期精装修两房，南北户型，房东诚意出租出门燎原双语
-                </h3>
-                <div className="desc">2室2厅1卫/82/南/阳光美景城</div>
-                <div>
-                  <span className={["tag", "tag1"].join(' ')}>
-                    近地铁
-                  </span>
-                </div>
-                <div className="price">
-                  <span className="priceNum">8500</span> 元/月
-                </div>
-              </div>
-            </div>
+            {this.renderHousesList()}
           </div>
         </div>
       </div>

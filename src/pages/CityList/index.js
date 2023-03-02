@@ -1,7 +1,6 @@
 import React from "react";
 import { Toast } from 'antd-mobile';
 import axios from "axios";
-import { object } from "prop-types";
 import { getCurrentCity } from "../../utils";
 // 导入 List 组件
 import { AutoSizer, List } from 'react-virtualized';
